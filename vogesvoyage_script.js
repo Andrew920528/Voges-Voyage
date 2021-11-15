@@ -408,7 +408,6 @@ var sketchProc = function(processingInstance) {
             Meteor.prototype.checkCollide = function(object, object_radius) {
                 var d = dist(object.position.x, object.position.y, this.position.x, this.position.y);
                 var hitBox = this.radius * this.size + object_radius;
-                //if they hit, let the fly reappear a few seconds later(by moving it downward)
                 if (d < hitBox) {
                     this.respawn();
                 }
@@ -427,6 +426,9 @@ var sketchProc = function(processingInstance) {
             Meteor.prototype.run = function() {
                 this.display();
                 this.checkCollide(ship, 0);
+                for (var i = 0; i < bullets.length; i++) {
+                    this.checkCollide(bullets[i], 3);
+                }
                 this.checkEdges();
                 this.update();
             };
