@@ -31,6 +31,9 @@ var sketchProc = function(processingInstance) {
                 this.boostOver = 1;
                 this.boostTime = 0;
                 this.notBoostTime = 0;
+                // bullet
+                this.ammo = 4;
+
             };
             /*************************************
              * Ship Setup (force and display)
@@ -243,10 +246,16 @@ var sketchProc = function(processingInstance) {
         var Bullet = function(ship) {
             this.position = new PVector(ship.position.x, ship.position.y);
             this.velocity = new PVector(0, 0);
-            this.angle = 0
+            this.angle = 0;
+            this.life = 30;
+            this.isDead = false;
         }
         Bullet.prototype.update = function() {
             this.position.add(this.velocity);
+            this.life--;
+            if (this.life < 0) {
+                this.isDead = true;
+            }
         };
         Bullet.prototype.display = function() {
             strokeWeight(5);
@@ -262,12 +271,16 @@ var sketchProc = function(processingInstance) {
         Bullet.prototype.shoot = function(ship) {
             this.position.x = ship.position.x;
             this.position.y = ship.position.y;
-
-            this.velocity.x = 3 * ship.velocity.x;
-            this.velocity.y = 3 * ship.velocity.y;
+            this.velocity.x = 3.5 * ship.velocity.x;
+            this.velocity.y = 3.5 * ship.velocity.y;
             this.angle = this.velocity.heading();
         };
-        bullet = new Bullet(ship);
+
+        var bullets = []
+        var createNewBullet = function() {
+            bullets.unshift(new Bullet(ship));
+            println(bullets.length)
+        };
 
         //Controls
         keyPressed = function() {
@@ -279,10 +292,13 @@ var sketchProc = function(processingInstance) {
                 } else if (keyCode === 90) {
                     ship.thrust();
                 } else if (keyCode === 88) {
-                    println(this.angle)
-                    println("shoot!")
+                    if (bullets.length < ship.ammo) {
+                        println(this.angle);
+                        println("shoot!");
+                        createNewBullet();
+                        bullets[0].shoot(ship);
+                    }
 
-                    bullet.shoot(ship);
                 }
             }
         };
@@ -690,8 +706,15 @@ var sketchProc = function(processingInstance) {
         draw = function() {
             size(width, height);
             background(22, 28, 61);
-            bullet.display();
-            bullet.update();
+            for (var i = 0; i < bullets.length; i++) {
+                if (!bullets[i].isDead) {
+                    bullets[i].display();
+                    bullets[i].update();
+                } else {
+                    bullets.pop();
+                }
+            }
+
             logic();
             //println(ship.angle)
             //println(bullet.position)
