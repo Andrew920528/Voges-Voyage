@@ -947,15 +947,18 @@ var sketchProc = function(processingInstance) {
         /*****************
          *draw function
          ****************/
-        draw = function() {
-            size(width, height);
-            background(22, 28, 61);
-            //println(score);
-            //println(ship.life);
-            logic();
-            //println(ship.angle)
-            //println(bullet.position)
-        };
+        {
+            draw = function() {
+                size(width, height);
+                background(22, 28, 61);
+                //println(score);
+                //println(ship.life);
+                logic();
+                //println(ship.angle)
+                //println(bullet.position)
+            };
+        }
+
 
     }
 };
