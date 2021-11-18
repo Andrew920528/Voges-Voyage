@@ -1,20 +1,27 @@
 var sketchProc = function(processingInstance) {
     with(processingInstance) {
-        width = 600;
-        height = 400;
-        //size(screen_x, screen_y);
-        frameRate(30);
-        //Global
-        var version = "1.0";
-        angleMode = "radians";
-        var gameStart = false;
-        var drawManual = false;
-        var win = false;
-        var lose = false;
-        var goal = 100;
-        var score = 0;
-        var highScore = 0;
-        var freePlay = false;
+        /*****************************
+         * Global Variables
+         ****************************/
+        {
+            width = 600;
+            height = 400;
+            //size(screen_x, screen_y);
+            frameRate(30);
+            //Global
+            var version = "1.0";
+            angleMode = "radians";
+            var gameStart = false;
+            var drawManual = false;
+            var win = false;
+            var lose = false;
+            var goal = 5000;
+            var score = 0;
+            var life = 3;
+            var highScore = 0;
+            var freePlay = false;
+        }
+
         /*****************************
          * keep track of stats
          ****************************/
@@ -51,6 +58,70 @@ var sketchProc = function(processingInstance) {
 
         }
         /*****************************
+         * interface
+         ****************************/
+        {
+            var drawScore = function() {
+                textSize(18);
+                fill(255, 255, 255);
+                text("Score: " + score, width * 0.80, height * 0.075);
+            };
+            var drawShip = function(x, y, ship) {
+                stroke(0, 0, 0);
+                strokeWeight(2);
+                fill(127, 127, 127);
+                pushMatrix();
+                translate(x, y);
+                //scale(6);
+                rotate(-1 * PI / 2);
+                // draw the space ship
+                fill(255, 255, 255);
+                triangle(ship.headX, ship.headY, ship.headX - ship.shipW, ship.headY + ship.shipH / 2, ship.headX - ship.shipW, ship.headY - ship.shipH / 2);
+                //thruster
+                rect(ship.headX - ship.shipW, ship.headY + ship.shipH / 2, -ship.shipW / 5, -ship.shipH / 3);
+                rect(ship.headX - ship.shipW, ship.headY - ship.shipH / 2, -ship.shipW / 5, ship.shipH / 3);
+                popMatrix();
+            };
+            var drawLife = function(ship) {
+                for (var i = 0; i < ship.life; i++) {
+                    drawShip(0.05 * width + 20 * i, 0.1 * height, ship);
+                }
+            };
+            var drawBoost = function(ship) {
+                if (ship.boostOver === 1) {
+                    noStroke();
+                    noStroke();
+                    fill(255, 242, 0);
+                    pushMatrix();
+                    translate(width * 0.025, height * 0.2);
+                    scale(0.1);
+                    triangle(220, 100, 295, 100, 177, 200);
+                    translate(470, 200);
+                    rotate(PI);
+                    triangle(220, 100, 295, 100, 177, 200);
+                    popMatrix();
+                }
+            }
+
+            var drawAmmo = function(x, y) {
+                strokeWeight(5);
+                stroke(158, 235, 235);
+                pushMatrix();
+                translate(x, y)
+                rotate(-1 * PI / 2)
+                ellipse(0, 0, 7, 3);
+                stroke(255, 255, 255);
+                ellipse(2, 0, 0.5, 0.5);
+                popMatrix();
+            };
+            var drawRemainingAmmo = function(ship, bul) {
+                for (var i = 0; i < ship.ammo - bul.length; i++) {
+                    drawAmmo(0.05 * width + 20 * i, 0.15 * height)
+                }
+            }
+
+        }
+        /*****************************
          * Ship object
          ****************************/
         {
@@ -71,10 +142,10 @@ var sketchProc = function(processingInstance) {
                 this.boostTime = 0;
                 this.notBoostTime = 0;
                 // bullet
-                this.ammo = 4;
+                this.ammo = 3;
 
                 // life
-                this.life = 3;
+                this.life = life;
             };
             /*************************************
              * Ship Setup (force and display)
@@ -96,9 +167,9 @@ var sketchProc = function(processingInstance) {
                     this.boostTime = 0;
                     this.notBoostTime = 0;
                     // bullet
-                    this.ammo = 4;
+                    this.ammo = 3;
                     // life
-                    this.life = 3;
+                    this.life = life;
                 }
                 Ship.prototype.display = function() {
                     // Setup
@@ -355,26 +426,31 @@ var sketchProc = function(processingInstance) {
                 }
             };
         }
-        //Controls
-        keyPressed = function() {
-            if (gameStart === true) {
-                if (keyCode === 37) {
-                    ship.turnLeft();
-                } else if (keyCode === 39) {
-                    ship.turnRight();
-                } else if (keyCode === 90) {
-                    ship.thrust();
-                } else if (keyCode === 88) {
-                    if (bullets.length < ship.ammo) {
-                        // println(this.angle);
-                        // println("shoot!");
-                        createNewBullet();
-                        bullets[0].shoot(ship);
-                    }
+        /************
+         * Controls
+         *************/
+        {
+            keyPressed = function() {
+                if (gameStart === true) {
+                    if (keyCode === 37) {
+                        ship.turnLeft();
+                    } else if (keyCode === 39) {
+                        ship.turnRight();
+                    } else if (keyCode === 90) {
+                        ship.thrust();
+                    } else if (keyCode === 88) {
+                        if (bullets.length < ship.ammo) {
+                            // println(this.angle);
+                            // println("shoot!");
+                            createNewBullet();
+                            bullets[0].shoot(ship);
+                        }
 
+                    }
                 }
-            }
-        };
+            };
+        }
+
         /****************************
          * meteor object
          ***************************/
@@ -488,7 +564,7 @@ var sketchProc = function(processingInstance) {
                         object.life--;
                     }
                     if (object.id === "bullet") {
-                        println("hot");
+                        //println("hot");
                         score += this.metScore;
                     }
                     this.respawn();
@@ -515,7 +591,7 @@ var sketchProc = function(processingInstance) {
                 this.update();
             };
             var meteor = [];
-            for (var i = 0; i < 5; i++) {
+            for (var i = 0; i < 7; i++) {
                 meteor[i] = new Meteor();
             }
             var doMeteor = function(met) {
@@ -527,7 +603,6 @@ var sketchProc = function(processingInstance) {
                         }
                     }
                 }
-
             };
         }
 
@@ -543,7 +618,7 @@ var sketchProc = function(processingInstance) {
                 this.velocity = new PVector(0, 0);
                 this.acceleration = new PVector(0, 0);
                 this.size = random(0.7, 1.2);
-                this.G = 240;
+                this.G = 300;
                 this.affected_radius = this.radius * this.size * 7;
                 this.metScore = 150;
             }
@@ -580,7 +655,7 @@ var sketchProc = function(processingInstance) {
                 this.acceleration = new PVector(0, 0);
             }
             g_meteor = [];
-            for (var i = 0; i < 1; i++) {
+            for (var i = 0; i < 2; i++) {
                 g_meteor[i] = new G_meteor();
             }
             var doGMeteor = function(g_met, ship) {
@@ -817,6 +892,10 @@ var sketchProc = function(processingInstance) {
                 if (!freePlay) {
                     checkWin(score);
                 }
+                drawScore();
+                drawLife(ship);
+                drawRemainingAmmo(ship, bullets);
+                drawBoost(ship);
             };
 
             var winScene = function() {
@@ -871,7 +950,7 @@ var sketchProc = function(processingInstance) {
         draw = function() {
             size(width, height);
             background(22, 28, 61);
-            println(score);
+            //println(score);
             //println(ship.life);
             logic();
             //println(ship.angle)
