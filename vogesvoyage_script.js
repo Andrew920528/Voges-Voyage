@@ -65,6 +65,7 @@ var sketchProc = function(processingInstance) {
                 textSize(18);
                 fill(255, 255, 255);
                 text("Score: " + score, width * 0.80, height * 0.075);
+                text("Goal: " + goal, width * 0.80, height * 0.15);
             };
             var drawShip = function(x, y, ship) {
                 stroke(0, 0, 0);
@@ -590,10 +591,42 @@ var sketchProc = function(processingInstance) {
                 this.checkEdges();
                 this.update();
             };
+            //create more meteor as game progresses
+            var makeMore = false;
+            var prior = 0;
+            var now = 0;
+            var instance = new Meteor();
+            var make = function(item, mark, type) {
+                now = score;
+                if (now - prior >= mark) {
+                    makeMore = true;
+                    prior = now;
+                }
+                if (makeMore === true) {
+                    item.push(type);
+                    makeMore = false;
+                }
+            };
+            var resetMeteor = function(met, init) {
+                makeMore = false;
+                prior = 0;
+                now = 0;
+                if (met.length > init) {
+                    // println("hi");
+                    extra = met.length - init;
+                    // println(extra);
+                    met = met.slice(extra);
+                    // println(met);
+
+                }
+                return met;
+            };
+            // create meteor system
             var meteor = [];
-            for (var i = 0; i < 7; i++) {
+            for (var i = 0; i < 5; i++) {
                 meteor[i] = new Meteor();
             }
+
             var doMeteor = function(met) {
                 for (var i = 0; i < met.length; i++) {
                     met[i].run();
@@ -603,6 +636,8 @@ var sketchProc = function(processingInstance) {
                         }
                     }
                 }
+                instance = new Meteor();
+                make(met, 1000, instance);
             };
         }
 
@@ -655,15 +690,18 @@ var sketchProc = function(processingInstance) {
                 this.acceleration = new PVector(0, 0);
             }
             g_meteor = [];
-            for (var i = 0; i < 2; i++) {
+            for (var i = 0; i < 1; i++) {
                 g_meteor[i] = new G_meteor();
             }
+            var instanceG = new G_meteor();
             var doGMeteor = function(g_met, ship) {
                 for (var i = 0; i < g_met.length; i++) {
                     g_met[i].run();
                     g_met[i].feature();
                     ship.applyForce(g_met[i].attract(ship));
                 }
+                instanceG = new G_meteor();
+                make(g_met, 3000, instanceG);
             }
 
         }
@@ -733,6 +771,7 @@ var sketchProc = function(processingInstance) {
                 onClick: function() {
                     gameStart = true;
                     ship.velocity.x = 1;
+                    resetBtn();
                 }
             });
 
@@ -747,6 +786,7 @@ var sketchProc = function(processingInstance) {
                 textColor: color(255, 255, 255),
                 onClick: function() {
                     drawManual = true;
+                    resetBtn();
                 }
             });
             //back button
@@ -760,6 +800,7 @@ var sketchProc = function(processingInstance) {
                 textColor: color(255, 255, 255),
                 onClick: function() {
                     drawManual = false;
+                    resetBtn();
                 }
             });
             //restart button
@@ -773,7 +814,12 @@ var sketchProc = function(processingInstance) {
                 textColor: color(255, 255, 255),
                 onClick: function() {
                     reset();
+                    // println("before reset:" + meteor);
+                    meteor = resetMeteor(meteor, 5);
+                    g_meteor = resetMeteor(g_meteor, 1);
+                    // println("after reset:" + meteor);
                     ship.reset();
+                    resetBtn();
                 }
             });
             // free play button
@@ -827,6 +873,7 @@ var sketchProc = function(processingInstance) {
                         y: height * 0.85,
                     })
                     full_screen.update({});
+                    resetBtn();
                 }
             });
 
@@ -838,6 +885,7 @@ var sketchProc = function(processingInstance) {
                 full_screen.reset();
                 restart.reset();
                 freePlayBtn.reset();
+
             };
             mouseClicked = function() {
                 start.handleMouseClick();
@@ -955,7 +1003,8 @@ var sketchProc = function(processingInstance) {
                 //println(ship.life);
                 logic();
                 //println(ship.angle)
-                //println(bullet.position)
+                //println(bullet.position);
+                // println(meteor.length);
             };
         }
 
