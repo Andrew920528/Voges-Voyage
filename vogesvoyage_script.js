@@ -11,6 +11,7 @@ var sketchProc = function(processingInstance) {
             //Global
             var version = "1.0";
             angleMode = "radians";
+            var loading = true;
             var gameStart = false;
             var drawManual = false;
             var win = false;
@@ -20,8 +21,8 @@ var sketchProc = function(processingInstance) {
             var life = 3;
             var highScore = 0;
             var freePlay = false;
+            var muted = false;
         }
-
         /*****************************
          * keep track of stats
          ****************************/
@@ -131,7 +132,7 @@ var sketchProc = function(processingInstance) {
                 this.position = new PVector(width / 2, height / 2);
                 this.velocity = new PVector(0, 0);
                 this.acceleration = new PVector(0, 0);
-                this.maxSpeed = 2;
+                this.maxSpeed = 2.5;
                 this.angle = 0;
                 //to change the size of the ship
                 this.headX = 20;
@@ -143,7 +144,7 @@ var sketchProc = function(processingInstance) {
                 this.boostTime = 0;
                 this.notBoostTime = 0;
                 // bullet
-                this.ammo = 3;
+                this.ammo = 4;
 
                 // life
                 this.life = life;
@@ -168,7 +169,7 @@ var sketchProc = function(processingInstance) {
                     this.boostTime = 0;
                     this.notBoostTime = 0;
                     // bullet
-                    this.ammo = 3;
+                    this.ammo = 4;
                     // life
                     this.life = life;
                 }
@@ -360,6 +361,8 @@ var sketchProc = function(processingInstance) {
 
                 Ship.prototype.thrust = function() {
                     if (this.boostOver >= 1) {
+                        zoom_audio.currentTime = 0;
+                        zoom_audio.play();
                         var thrustForce = new PVector(cos(this.angle), sin(this.angle));
                         thrustForce.mult(8);
                         this.applyForce(thrustForce);
@@ -382,8 +385,10 @@ var sketchProc = function(processingInstance) {
                 this.position = new PVector(ship.position.x, ship.position.y);
                 this.velocity = new PVector(0, 0);
                 this.angle = 0;
-                this.life = 30;
+                this.life = 40;
                 this.isDead = false;
+                // after the bullet is dead, wait for the cooldown to fire
+                this.cooldown = 40;
             }
             Bullet.prototype.update = function() {
                 this.position.add(this.velocity);
@@ -391,6 +396,9 @@ var sketchProc = function(processingInstance) {
                 if (this.life < 0) {
                     this.isDead = true;
                 }
+            };
+            Bullet.prototype.cd = function() {
+                this.cooldown--;
             };
             Bullet.prototype.display = function() {
                 strokeWeight(5);
@@ -422,9 +430,51 @@ var sketchProc = function(processingInstance) {
                         bul[i].display();
                         bul[i].update();
                     } else {
+                        bul[i].cd();
+                    }
+                    if (bul[i].cooldown <= 0) {
                         bul.pop();
                     }
                 }
+            };
+        }
+        /****************************
+         * audio objects
+         ***************************/
+        {
+            var shoot_audio = new Audio('laser.mp3');
+            var explosion_audio = new Audio('explosion.mp3');
+            var hit_audio = new Audio('hit.mp3');
+            var zoom_audio = new Audio('zoom.mp3');
+            var buttonHovered_audio = new Audio('buttonHovered.mp3');
+            var buttonClicked_audio = new Audio('buttonClicked.mp3');
+            var bgm1_audio = new Audio('bgm1.mp3');
+            shoot_audio.volume = 1;
+            explosion_audio.volume = 0.01;
+            hit_audio.volume = 0.02;
+            zoom_audio.volume = 0.1;
+            buttonHovered_audio.volume = 0.2;
+            buttonClicked_audio.volume = 0.2;
+            bgm1_audio.volume = 0.01;
+            var mute = function() {
+                shoot_audio.volume = 0;
+                explosion_audio.volume = 0;
+                hit_audio.volume = 0;
+                zoom_audio.volume = 0;
+                buttonHovered_audio.volume = 0;
+                buttonClicked_audio.volume = 0;
+                bgm1_audio.volume = 0;
+                muted = true;
+            };
+            var unmute = function() {
+                shoot_audio.volume = 1;
+                explosion_audio.volume = 0.01;
+                hit_audio.volume = 0.02;
+                zoom_audio.volume = 0.1;
+                buttonHovered_audio.volume = 0.3;
+                buttonClicked_audio.volume = 0.3;
+                bgm1_audio.volume = 0.001;
+                muted = false;
             };
         }
         /************
@@ -443,6 +493,8 @@ var sketchProc = function(processingInstance) {
                         if (bullets.length < ship.ammo) {
                             // println(this.angle);
                             // println("shoot!");
+                            shoot_audio.currentTime = 0;
+                            shoot_audio.play();
                             createNewBullet();
                             bullets[0].shoot(ship);
                         }
@@ -479,6 +531,7 @@ var sketchProc = function(processingInstance) {
                 }
                 // score
                 this.metScore = 100;
+                this.life = 2;
 
 
             };
@@ -550,6 +603,7 @@ var sketchProc = function(processingInstance) {
                 this.mass = this.size * 1.5;
                 this.rotateDir = random(0, 1);
                 this.acceleration = new PVector(1 / this.mass, 1 / this.mass);
+                this.life = 2;
                 if (this.velocity.x < 0) {
                     this.acceleration.x = -1 * this.acceleration.x;
                 }
@@ -563,12 +617,25 @@ var sketchProc = function(processingInstance) {
                 if (d < hitBox) {
                     if (object.id === "ship") {
                         object.life--;
+                        explosion_audio.currentTime = 0;
+                        explosion_audio.play();
+                        this.respawn();
                     }
                     if (object.id === "bullet") {
                         //println("hot");
                         score += this.metScore;
+                        this.life -= 1;
+                        if (this.life != 0) {
+                            hit_audio.currentTime = 0;
+                            hit_audio.play();
+                        }
+                        object.isDead = true;
                     }
-                    this.respawn();
+                    if (this.life === 0) {
+                        explosion_audio.currentTime = 0;
+                        explosion_audio.play();
+                        this.respawn();
+                    }
                 }
             }
             Meteor.prototype.checkEdges = function() {
@@ -586,7 +653,9 @@ var sketchProc = function(processingInstance) {
                 this.display();
                 this.checkCollide(ship, 0);
                 for (var i = 0; i < bullets.length; i++) {
-                    this.checkCollide(bullets[i], 3);
+                    if (!bullets[i].isDead) {
+                        this.checkCollide(bullets[i], 3);
+                    }
                 }
                 this.checkEdges();
                 this.update();
@@ -653,6 +722,7 @@ var sketchProc = function(processingInstance) {
                 this.velocity = new PVector(0, 0);
                 this.acceleration = new PVector(0, 0);
                 this.size = random(0.7, 1.2);
+                this.life = 3;
                 this.G = 300;
                 this.affected_radius = this.radius * this.size * 7;
                 this.metScore = 150;
@@ -688,6 +758,7 @@ var sketchProc = function(processingInstance) {
                 this.position = new PVector(random(0, width), random(0, height));
                 this.velocity = new PVector(0, 0);
                 this.acceleration = new PVector(0, 0);
+                this.life = 3;
             }
             g_meteor = [];
             for (var i = 0; i < 1; i++) {
@@ -719,8 +790,8 @@ var sketchProc = function(processingInstance) {
                 this.textColor = config.textColor;
                 this.onClick = config.onClick;
                 this.exist = false;
+                this.hoverSound = true;
             };
-
             //draw the button
             Button.prototype.draw = function() {
                 noStroke();
@@ -728,8 +799,14 @@ var sketchProc = function(processingInstance) {
                     strokeWeight(2);
                     stroke(255, 255, 255);
                     fill(this.color);
+                    if (this.hoverSound) {
+                        this.hoverSound = false;
+                        buttonHovered_audio.currentTime = 0;
+                        buttonHovered_audio.play();
+                    }
                 } else {
                     fill(this.color);
+                    this.hoverSound = true;
                 }
                 rectMode(CENTER);
                 rect(this.x, this.y, this.width, this.height, 5);
@@ -756,6 +833,8 @@ var sketchProc = function(processingInstance) {
                 //handle mouse clicks for the button
             Button.prototype.handleMouseClick = function() {
                 if (this.isMouseInside() && this.exist) {
+                    buttonClicked_audio.currentTime = 0;
+                    buttonClicked_audio.play();
                     this.onClick();
                 }
             };
@@ -872,11 +951,45 @@ var sketchProc = function(processingInstance) {
                         x: width * 0.5,
                         y: height * 0.85,
                     })
+                    muteBtn.update({
+                        x: width * 0.1,
+                        y: height * 0.1,
+                    })
+                    unmuteBtn.update({
+                        x: width * 0.1,
+                        y: height * 0.1,
+                    })
                     full_screen.update({});
                     resetBtn();
                 }
             });
-
+            // mute button
+            var muteBtn = new Button({
+                x: width * 0.1,
+                y: height * 0.1,
+                width: 80,
+                height: 36,
+                label: "Mute",
+                color: color(35, 138, 176),
+                textColor: color(255, 255, 255),
+                onClick: function() {
+                    mute();
+                    resetBtn();
+                }
+            });
+            var unmuteBtn = new Button({
+                x: width * 0.1,
+                y: height * 0.1,
+                width: 80,
+                height: 36,
+                label: "Unmute",
+                color: color(35, 138, 176),
+                textColor: color(255, 255, 255),
+                onClick: function() {
+                    unmute();
+                    resetBtn();
+                }
+            });
 
             var resetBtn = function() {
                 start.reset();
@@ -885,22 +998,32 @@ var sketchProc = function(processingInstance) {
                 full_screen.reset();
                 restart.reset();
                 freePlayBtn.reset();
-
+                muteBtn.reset();
+                unmuteBtn.reset();
             };
             mouseClicked = function() {
+                loading = false;
                 start.handleMouseClick();
                 howToPlay.handleMouseClick();
                 back.handleMouseClick();
                 full_screen.handleMouseClick();
                 restart.handleMouseClick();
                 freePlayBtn.handleMouseClick();
+                muteBtn.handleMouseClick();
+                unmuteBtn.handleMouseClick();
             };
         }
-
         /**************************
          * draw different scenes
          *************************/
         {
+            //load Screen
+            var loadScreen = function() {
+                textSize(30);
+                textAlign(CENTER, CENTER);
+                text("Click To Start", width / 2, height * 0.45);
+                //loading = false;
+            };
             //how to play
             var manual = function() {
                 fill(23, 45, 77);
@@ -911,6 +1034,7 @@ var sketchProc = function(processingInstance) {
                 textSize(20);
                 text("So you press z to boost \n and use arrow keys \n to control left and right", width * 0.5, height * 0.25);
                 back.draw();
+                bgm1_audio.play();
             };
             //home page
             var home = function() {
@@ -925,6 +1049,12 @@ var sketchProc = function(processingInstance) {
                 line(width * 0.2, height * 0.4, width * 0.8, height * 0.4);
                 textSize(14);
                 text("ver " + version, width * 0.5, height * 0.9);
+                if (muted) {
+                    unmuteBtn.draw();
+                } else {
+                    muteBtn.draw();
+                }
+                bgm1_audio.play();
             };
             //gameScene
             var gameScene = function() {
@@ -944,6 +1074,7 @@ var sketchProc = function(processingInstance) {
                 drawLife(ship);
                 drawRemainingAmmo(ship, bullets);
                 drawBoost(ship);
+                bgm1_audio.play();
             };
 
             var winScene = function() {
@@ -951,6 +1082,7 @@ var sketchProc = function(processingInstance) {
                 textSize(40);
                 text("Mission Completed!", width / 2, height * 0.3);
                 updateHighScore(score, highScore);
+                bgm1_audio.play();
             };
             var loseScene = function() {
                 restart.draw();
@@ -962,6 +1094,7 @@ var sketchProc = function(processingInstance) {
                     text("Super Pilot!", width / 2, height * 0.4);
                 }
                 updateHighScore(score, highScore);
+                bgm1_audio.play();
             };
         }
 
@@ -970,25 +1103,30 @@ var sketchProc = function(processingInstance) {
          *******************/
         {
             var logic = function() {
-                //before the game
-                if (gameStart === false && drawManual === false) {
-                    //home page
-                    home();
-                }
-                if (gameStart === false && drawManual === true) {
-                    //instruction page
-                    manual();
-                }
-                //during the game
-                if ((gameStart === true && !win && !lose)) {
-                    gameScene();
-                }
-                //after the game
-                if (win && !freePlay) {
-                    winScene();
-                }
-                if (lose) {
-                    loseScene();
+                //load screen
+                if (loading) {
+                    loadScreen();
+                } else {
+                    //before the game
+                    if (gameStart === false && drawManual === false) {
+                        //home page
+                        home();
+                    }
+                    if (gameStart === false && drawManual === true) {
+                        //instruction page
+                        manual();
+                    }
+                    //during the game
+                    if ((gameStart === true && !win && !lose)) {
+                        gameScene();
+                    }
+                    //after the game
+                    if (win && !freePlay) {
+                        winScene();
+                    }
+                    if (lose) {
+                        loseScene();
+                    }
                 }
             };
         }
