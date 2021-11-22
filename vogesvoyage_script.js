@@ -1032,7 +1032,7 @@ var sketchProc = function(processingInstance) {
                 rect(width / 2, height / 2, width * 0.8, height * 0.8, 5);
                 fill(255, 255, 255);
                 textSize(20);
-                text("So you press z to boost \n and use arrow keys \n to control left and right", width * 0.5, height * 0.25);
+                text("Press z to boost to escape gravity \n Use <- and -> arrow keys \n to control direction \n Press x to shoot the meteors!", width * 0.5, height * 0.25);
                 back.draw();
                 bgm1_audio.play();
             };
